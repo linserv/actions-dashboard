@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import os
-from github import Github
+from github import Github, Auth
 from datetime import datetime
 
-# Initialize GitHub client
-g = Github(os.environ['GITHUB_TOKEN'])
+# Initialize GitHub client with new auth method
+auth = Auth.Token(os.environ['GITHUB_TOKEN'])
+g = Github(auth=auth)
 user_login = os.environ.get('DASHBOARD_USER', 'linservbot')
 
 # Get user or organization
@@ -252,3 +253,6 @@ with open('output/index.html', 'w') as f:
 
 print(f"\n✅ Dashboard generated successfully!")
 print(f"   Repos tracked: {len(dashboard_data)}")
+
+# Close connection
+g.close()
