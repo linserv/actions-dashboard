@@ -20,6 +20,11 @@
             margin-bottom: 10px;
             color: #58a6ff;
         }
+        .subtitle {
+            color: #8b949e;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
         .last-updated {
             color: #8b949e;
             margin-bottom: 30px;
@@ -106,20 +111,30 @@
         .repo-name {
             font-weight: 600;
         }
+        .filter-badge {
+            display: inline-block;
+            background: #1f6feb;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            margin-left: 10px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 GitHub Actions Dashboard - linserv</h1>
-        <p class="last-updated">Last updated: 2025-11-10 11:49:44 UTC</p>
+        <h1>🚀 GitHub Actions Dashboard - linserv<span class="filter-badge">🔍 sync-fork</span></h1>
+        <p class="last-updated">Last updated: 2025-11-10 11:54:41 UTC</p>
         
         <div class="stats">
             <div class="stat-card">
-                <div class="stat-number">4</div>
+                <div class="stat-number">1</div>
                 <div class="stat-label">Total Repos</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number success">3</div>
+                <div class="stat-number success">1</div>
                 <div class="stat-label">Passing</div>
             </div>
             <div class="stat-card">
@@ -127,7 +142,7 @@
                 <div class="stat-label">Failing</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number in-progress">1</div>
+                <div class="stat-number in-progress">0</div>
                 <div class="stat-label">In Progress</div>
             </div>
         </div>
@@ -144,33 +159,6 @@
                 </tr>
             </thead>
             <tbody>
-
-                <tr>
-                    <td class="repo-name"><a href="https://github.com/linserv/actions-dashboard" target="_blank">linserv/actions-dashboard</a></td>
-                    <td>Update Actions Dashboard</td>
-                    <td>main</td>
-                    <td><span class="status-badge badge-in-progress">in_progress</span></td>
-                    <td>2025-11-10 11:49</td>
-                    <td><a href="https://github.com/linserv/actions-dashboard/actions/runs/19230576720" target="_blank">View Run →</a></td>
-                </tr>
-
-                <tr>
-                    <td class="repo-name"><a href="https://github.com/linserv/sale-workflow" target="_blank">linserv/sale-workflow</a></td>
-                    <td>tests</td>
-                    <td>17.0</td>
-                    <td><span class="status-badge badge-success">success</span></td>
-                    <td>2025-09-19 03:48</td>
-                    <td><a href="https://github.com/linserv/sale-workflow/actions/runs/17847825250" target="_blank">View Run →</a></td>
-                </tr>
-
-                <tr>
-                    <td class="repo-name"><a href="https://github.com/linserv/server-auth" target="_blank">linserv/server-auth</a></td>
-                    <td>pre-commit</td>
-                    <td>16.0</td>
-                    <td><span class="status-badge badge-success">success</span></td>
-                    <td>2025-05-12 08:37</td>
-                    <td><a href="https://github.com/linserv/server-auth/actions/runs/14967635701" target="_blank">View Run →</a></td>
-                </tr>
 
                 <tr>
                     <td class="repo-name"><a href="https://github.com/linserv/odoo" target="_blank">linserv/odoo</a></td>
