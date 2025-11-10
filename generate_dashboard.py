@@ -8,6 +8,12 @@ auth = Auth.Token(os.environ['GITHUB_TOKEN'])
 g = Github(auth=auth)
 user_login = os.environ.get('DASHBOARD_USER', 'linservbot')
 
+# Filter for specific workflows (comma-separated, or leave empty for all)
+workflow_filter = os.environ.get('WORKFLOW_FILTER', 'sync-fork').lower()
+workflow_filters = [f.strip() for f in workflow_filter.split(',') if f.strip()]
+
+print(f"Workflow filter: {workflow_filters if workflow_filters else 'None (showing all workflows)'}")
+
 # Get user or organization
 try:
     # Try as organization first
@@ -43,6 +49,13 @@ for repo in repos:
             
         latest_run = runs[0]
         
+        # Apply workflow filter if specified
+        if workflow_filters:
+            workflow_name_lower = latest_run.name.lower()
+            if not any(filter_term in workflow_name_lower for filter_term in workflow_filters):
+                print(f"  ⊘ {repo.full_name}: Skipped (workflow '{latest_run.name}' doesn't match filter)")
+                continue
+        
         repo_data = {
             'name': repo.full_name,
             'url': repo.html_url,
@@ -55,7 +68,7 @@ for repo in repos:
         }
         
         dashboard_data.append(repo_data)
-        print(f"  ✓ {repo.full_name}: {latest_run.conclusion or latest_run.status}")
+        print(f"  ✓ {repo.full_name}: {latest_run.conclusion or latest_run.status} (workflow: {latest_run.name})")
         
     except Exception as e:
         print(f"  ✗ Error fetching {repo.full_name}: {e}")
@@ -66,6 +79,7 @@ status_priority = {'failure': 0, 'cancelled': 1, 'in_progress': 2, 'success': 3,
 dashboard_data.sort(key=lambda x: status_priority.get(x['conclusion'] or x['status'], 99))
 
 # Generate HTML
+filter_display = f" - Filtered by: {', '.join(workflow_filters)}" if workflow_filters else ""
 html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -87,6 +101,11 @@ html = f"""<!DOCTYPE html>
         h1 {{
             margin-bottom: 10px;
             color: #58a6ff;
+        }}
+        .subtitle {{
+            color: #8b949e;
+            margin-bottom: 5px;
+            font-size: 14px;
         }}
         .last-updated {{
             color: #8b949e;
@@ -174,11 +193,21 @@ html = f"""<!DOCTYPE html>
         .repo-name {{
             font-weight: 600;
         }}
+        .filter-badge {{
+            display: inline-block;
+            background: #1f6feb;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            margin-left: 10px;
+            font-weight: 500;
+        }}
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 GitHub Actions Dashboard - {user_login}</h1>
+        <h1>🚀 GitHub Actions Dashboard - {user_login}{f'<span class="filter-badge">🔍 {", ".join(workflow_filters)}</span>' if workflow_filters else ''}</h1>
         <p class="last-updated">Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
         
         <div class="stats">
@@ -253,6 +282,7 @@ with open('output/index.html', 'w') as f:
 
 print(f"\n✅ Dashboard generated successfully!")
 print(f"   Repos tracked: {len(dashboard_data)}")
+print(f"   Filter applied: {workflow_filters if workflow_filters else 'None'}")
 
 # Close connection
 g.close()
