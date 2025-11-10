@@ -26,7 +26,7 @@ jobs:
 
       - name: Generate dashboard
         env:
-          GITHUB_TOKEN: ${{ secrets.LINSERVBOT_DASHBOARD_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.LINSERV_FORK_SYNC_PAT }}
           DASHBOARD_USER: linservbot
         run: python generate_dashboard.py
 
