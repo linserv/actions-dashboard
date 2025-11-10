@@ -1,0 +1,38 @@
+name: Update Actions Dashboard
+
+on:
+  schedule:
+    - cron: '0 1 * * 5'  # Every Friday at 01:00 UTC (1 hour after your syncs)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install PyGithub requests
+
+      - name: Generate dashboard
+        env:
+          GITHUB_TOKEN: ${{ secrets.LINSERVBOT_DASHBOARD_TOKEN }}
+          DASHBOARD_USER: linservbot
+        run: python generate_dashboard.py
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./output
+          publish_branch: gh-pages
