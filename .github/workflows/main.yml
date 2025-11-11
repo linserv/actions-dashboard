@@ -28,7 +28,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.LINSERV_FORK_SYNC_PAT }}
           DASHBOARD_USER: linserv
-          WORKFLOW_FILTER: "sync-fork,sync-odoo,sync-3rd-party"
+          WORKFLOW_FILTER: "sync-odoo,sync-3rd-party" #sync-fork
         run: python generate_dashboard.py
 
       - name: Deploy to GitHub Pages
