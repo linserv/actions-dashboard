@@ -56,6 +56,19 @@ for repo in repos:
                 print(f"  ⊘ {repo.full_name}: Skipped (workflow '{latest_run.name}' doesn't match filter)")
                 continue
         
+        # Get jobs for this run (to show matrix details)
+        jobs = latest_run.jobs()
+        job_details = []
+        
+        for job in jobs:
+            job_details.append({
+                'name': job.name,
+                'status': job.status,
+                'conclusion': job.conclusion,
+                'started_at': job.started_at.isoformat() if job.started_at else None,
+                'completed_at': job.completed_at.isoformat() if job.completed_at else None,
+            })
+        
         repo_data = {
             'name': repo.full_name,
             'url': repo.html_url,
@@ -64,11 +77,19 @@ for repo in repos:
             'conclusion': latest_run.conclusion,
             'run_url': latest_run.html_url,
             'updated_at': latest_run.updated_at.isoformat(),
-            'branch': latest_run.head_branch
+            'branch': latest_run.head_branch,
+            'jobs': job_details,
+            'job_count': len(job_details)
         }
         
         dashboard_data.append(repo_data)
-        print(f"  ✓ {repo.full_name}: {latest_run.conclusion or latest_run.status} (workflow: {latest_run.name})")
+        
+        # Summary for console
+        success_count = sum(1 for j in job_details if j['conclusion'] == 'success')
+        failure_count = sum(1 for j in job_details if j['conclusion'] == 'failure')
+        
+        print(f"  ✓ {repo.full_name}: {latest_run.conclusion or latest_run.status} "
+              f"(workflow: {latest_run.name}, jobs: {success_count}✅/{failure_count}❌)")
         
     except Exception as e:
         print(f"  ✗ Error fetching {repo.full_name}: {e}")
@@ -79,7 +100,6 @@ status_priority = {'failure': 0, 'cancelled': 1, 'in_progress': 2, 'success': 3,
 dashboard_data.sort(key=lambda x: status_priority.get(x['conclusion'] or x['status'], 99))
 
 # Generate HTML
-filter_display = f" - Filtered by: {', '.join(workflow_filters)}" if workflow_filters else ""
 html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -95,17 +115,12 @@ html = f"""<!DOCTYPE html>
             padding: 20px;
         }}
         .container {{
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }}
         h1 {{
             margin-bottom: 10px;
             color: #58a6ff;
-        }}
-        .subtitle {{
-            color: #8b949e;
-            margin-bottom: 5px;
-            font-size: 14px;
         }}
         .last-updated {{
             color: #8b949e;
@@ -143,6 +158,7 @@ html = f"""<!DOCTYPE html>
             background: #161b22;
             border-radius: 6px;
             overflow: hidden;
+            margin-bottom: 20px;
         }}
         th, td {{
             padding: 12px;
@@ -203,6 +219,60 @@ html = f"""<!DOCTYPE html>
             margin-left: 10px;
             font-weight: 500;
         }}
+        .job-details {{
+            margin-top: 8px;
+            padding: 8px;
+            background: #0d1117;
+            border-radius: 4px;
+            font-size: 12px;
+        }}
+        .job-item {{
+            display: inline-block;
+            margin-right: 12px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            margin-bottom: 4px;
+        }}
+        .job-item.success {{
+            background: #1a3c25;
+            color: #3fb950;
+        }}
+        .job-item.failure {{
+            background: #3c1c1f;
+            color: #f85149;
+        }}
+        .job-item.in_progress {{
+            background: #3c2e1a;
+            color: #d29922;
+        }}
+        .job-summary {{
+            color: #8b949e;
+            font-size: 11px;
+            margin-top: 4px;
+        }}
+        .expandable {{
+            cursor: pointer;
+        }}
+        .expand-icon {{
+            display: inline-block;
+            margin-right: 5px;
+            transition: transform 0.2s;
+        }}
+        .expanded .expand-icon {{
+            transform: rotate(90deg);
+        }}
+        details {{
+            margin-top: 8px;
+        }}
+        summary {{
+            cursor: pointer;
+            color: #58a6ff;
+            font-size: 12px;
+            padding: 4px;
+        }}
+        summary:hover {{
+            text-decoration: underline;
+        }}
     </style>
 </head>
 <body>
@@ -236,6 +306,7 @@ html = f"""<!DOCTYPE html>
                     <th>Workflow</th>
                     <th>Branch</th>
                     <th>Status</th>
+                    <th>Jobs</th>
                     <th>Last Updated</th>
                     <th>Actions</th>
                 </tr>
@@ -254,12 +325,38 @@ for repo in dashboard_data:
     except:
         time_str = repo['updated_at']
     
+    # Job summary
+    jobs = repo['jobs']
+    success_jobs = sum(1 for j in jobs if j['conclusion'] == 'success')
+    failure_jobs = sum(1 for j in jobs if j['conclusion'] == 'failure')
+    in_progress_jobs = sum(1 for j in jobs if j['status'] == 'in_progress')
+    
+    job_summary = f"{success_jobs}✅"
+    if failure_jobs > 0:
+        job_summary += f" / {failure_jobs}❌"
+    if in_progress_jobs > 0:
+        job_summary += f" / {in_progress_jobs}⏳"
+    
+    # Job details HTML
+    job_details_html = ""
+    if len(jobs) > 1:  # Only show details if there are multiple jobs (matrix)
+        job_details_html = "<details><summary>Show job details</summary><div class='job-details'>"
+        for job in jobs:
+            job_conclusion = job['conclusion'] or job['status']
+            job_class = job_conclusion.replace(' ', '_') if job_conclusion else 'unknown'
+            job_details_html += f"<span class='job-item {job_class}'>{job['name']}</span>"
+        job_details_html += "</div></details>"
+    
     html += f"""
                 <tr>
                     <td class="repo-name"><a href="{repo['url']}" target="_blank">{repo['name']}</a></td>
                     <td>{repo['workflow_name']}</td>
                     <td>{repo['branch']}</td>
                     <td><span class="status-badge {badge_class}">{conclusion or 'unknown'}</span></td>
+                    <td>
+                        <div>{job_summary}</div>
+                        {job_details_html}
+                    </td>
                     <td>{time_str}</td>
                     <td><a href="{repo['run_url']}" target="_blank">View Run →</a></td>
                 </tr>
