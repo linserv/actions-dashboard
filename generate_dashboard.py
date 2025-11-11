@@ -7,7 +7,7 @@ from datetime import datetime
 # Initialize GitHub client with new auth method
 auth = Auth.Token(os.environ['GITHUB_TOKEN'])
 g = Github(auth=auth)
-user_login = os.environ.get('DASHBOARD_USER', 'linservbot')
+user_login = os.environ.get('DASHBOARD_USER', 'gediminasvenc')
 
 # Filter for specific workflows (comma-separated, or leave empty for all)
 workflow_filter = os.environ.get('WORKFLOW_FILTER', 'sync-odoo,sync-3rd-party').lower()
@@ -25,43 +25,48 @@ except:
     entity = g.get_user(user_login)
     print(f"Fetching workflow status for user: {user_login}")
 
-# Load branch information from workflow files
+# Load branch information from workflow files in the dashboard repo
 branch_config = {}
 
-def load_workflow_branches(workflow_file):
-    """Load branches configuration from workflow YAML files"""
+def load_workflow_branches_from_repo(repo, workflow_file):
+    """Load branches configuration from workflow YAML files in GitHub repo"""
     config = {}
     try:
-        if os.path.exists(workflow_file):
-            with open(workflow_file, 'r') as f:
-                workflow_data = yaml.safe_load(f)
-                
-                # Extract matrix configuration
-                if 'jobs' in workflow_data:
-                    for job_name, job_data in workflow_data['jobs'].items():
-                        if 'strategy' in job_data and 'matrix' in job_data['strategy']:
-                            matrix = job_data['strategy']['matrix']
-                            if 'include' in matrix:
-                                for item in matrix['include']:
-                                    if 'fork_repo' in item and 'branches' in item:
-                                        fork_repo = item['fork_repo']
-                                        branches = item['branches']
-                                        # Parse branches (can be comma-separated string or list)
-                                        if isinstance(branches, str):
-                                            branch_list = [b.strip() for b in branches.split(',')]
-                                        else:
-                                            branch_list = branches
-                                        config[fork_repo] = branch_list
-            print(f"  ✓ Loaded {len(config)} repos from {workflow_file}")
+        # Get the workflow file from the repo
+        file_content = repo.get_contents(f".github/workflows/{workflow_file}")
+        workflow_data = yaml.safe_load(file_content.decoded_content)
+        
+        # Extract matrix configuration
+        if 'jobs' in workflow_data:
+            for job_name, job_data in workflow_data['jobs'].items():
+                if 'strategy' in job_data and 'matrix' in job_data['strategy']:
+                    matrix = job_data['strategy']['matrix']
+                    if 'include' in matrix:
+                        for item in matrix['include']:
+                            if 'fork_repo' in item and 'branches' in item:
+                                fork_repo = item['fork_repo']
+                                branches = item['branches']
+                                # Parse branches (can be comma-separated string or list)
+                                if isinstance(branches, str):
+                                    branch_list = [b.strip() for b in branches.split(',')]
+                                else:
+                                    branch_list = branches
+                                config[fork_repo] = branch_list
+        print(f"  ✓ Loaded {len(config)} repos from {workflow_file}")
     except Exception as e:
         print(f"  ⚠️  Could not load {workflow_file}: {e}")
     
     return config
 
-# Load both workflow files
+# Get the dashboard repo to read workflow files
 print("Loading workflow branch configurations...")
-branch_config.update(load_workflow_branches('.github/workflows/sync-odoo.yml'))
-branch_config.update(load_workflow_branches('.github/workflows/sync-3rd-party.yml'))
+try:
+    dashboard_repo = g.get_repo(f"{user_login}/sync-forks")
+    branch_config.update(load_workflow_branches_from_repo(dashboard_repo, 'sync-odoo.yml'))
+    branch_config.update(load_workflow_branches_from_repo(dashboard_repo, 'sync-3rd-party.yml'))
+except Exception as e:
+    print(f"  ⚠️  Could not access sync-forks repo: {e}")
+    print("  ℹ️  Make sure the repository is named 'sync-forks'")
 
 print(f"Total repos with branch info: {len(branch_config)}\n")
 
@@ -597,6 +602,7 @@ with open('output/index.html', 'w') as f:
 print(f"\n✅ Dashboard generated successfully!")
 print(f"   Total runs tracked: {len(dashboard_data)}")
 print(f"   Filter applied: {workflow_filters if workflow_filters else 'None'}")
+print(f"   Branch config loaded: {len(branch_config)} repos")
 
 # Close connection
 g.close()
