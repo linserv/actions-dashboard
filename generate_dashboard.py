@@ -41,65 +41,76 @@ for repo in repos:
         if workflows.totalCount == 0:
             continue
             
-        # Get latest run for each workflow
-        runs = repo.get_workflow_runs()
+        # Get ALL workflow runs (not just latest)
+        all_runs = repo.get_workflow_runs()
         
-        if runs.totalCount == 0:
+        if all_runs.totalCount == 0:
             continue
+        
+        # Track workflows we've already processed for this repo
+        processed_workflows = set()
+        
+        # Process each run
+        for run in all_runs:
+            workflow_name_lower = run.name.lower()
             
-        latest_run = runs[0]
-        
-        # Apply workflow filter if specified
-        if workflow_filters:
-            workflow_name_lower = latest_run.name.lower()
-            if not any(filter_term in workflow_name_lower for filter_term in workflow_filters):
-                print(f"  ⊘ {repo.full_name}: Skipped (workflow '{latest_run.name}' doesn't match filter)")
+            # Apply workflow filter if specified
+            if workflow_filters:
+                if not any(filter_term in workflow_name_lower for filter_term in workflow_filters):
+                    continue
+            
+            # Skip if we already have a run for this workflow in this repo
+            # (we want the latest for each workflow)
+            if run.name in processed_workflows:
                 continue
-        
-        # Determine workflow type/category
-        workflow_name_lower = latest_run.name.lower()
-        if 'odoo' in workflow_name_lower:
-            workflow_type = '🐭 Odoo'
-        elif '3rd' in workflow_name_lower or 'third' in workflow_name_lower:
-            workflow_type = '📦 3rd Party'
-        else:
-            workflow_type = '🔄 Other'
-        
-        # Get jobs for this run (to show matrix details)
-        jobs = latest_run.jobs()
-        job_details = []
-        
-        for job in jobs:
-            job_details.append({
-                'name': job.name,
-                'status': job.status,
-                'conclusion': job.conclusion,
-                'started_at': job.started_at.isoformat() if job.started_at else None,
-                'completed_at': job.completed_at.isoformat() if job.completed_at else None,
-            })
-        
-        repo_data = {
-            'name': repo.full_name,
-            'url': repo.html_url,
-            'workflow_name': latest_run.name,
-            'workflow_type': workflow_type,
-            'status': latest_run.status,
-            'conclusion': latest_run.conclusion,
-            'run_url': latest_run.html_url,
-            'updated_at': latest_run.updated_at.isoformat(),
-            'branch': latest_run.head_branch,
-            'jobs': job_details,
-            'job_count': len(job_details)
-        }
-        
-        dashboard_data.append(repo_data)
-        
-        # Summary for console
-        success_count = sum(1 for j in job_details if j['conclusion'] == 'success')
-        failure_count = sum(1 for j in job_details if j['conclusion'] == 'failure')
-        
-        print(f"  ✓ {repo.full_name}: {latest_run.conclusion or latest_run.status} "
-              f"(workflow: {latest_run.name}, jobs: {success_count}✅/{failure_count}❌)")
+            
+            processed_workflows.add(run.name)
+            
+            # Determine workflow type/category
+            if 'sync-fork' in workflow_name_lower:
+                workflow_type = '🐭 Odoo (sync-fork)'
+            elif 'sync-odoo' in workflow_name_lower:
+                workflow_type = '🐭 Odoo (sync-odoo)'
+            elif '3rd' in workflow_name_lower or 'third' in workflow_name_lower or 'sync-3rd' in workflow_name_lower:
+                workflow_type = '📦 3rd Party'
+            else:
+                workflow_type = '🔄 Other'
+            
+            # Get jobs for this run (to show matrix details)
+            jobs = run.jobs()
+            job_details = []
+            
+            for job in jobs:
+                job_details.append({
+                    'name': job.name,
+                    'status': job.status,
+                    'conclusion': job.conclusion,
+                    'started_at': job.started_at.isoformat() if job.started_at else None,
+                    'completed_at': job.completed_at.isoformat() if job.completed_at else None,
+                })
+            
+            repo_data = {
+                'name': repo.full_name,
+                'url': repo.html_url,
+                'workflow_name': run.name,
+                'workflow_type': workflow_type,
+                'status': run.status,
+                'conclusion': run.conclusion,
+                'run_url': run.html_url,
+                'updated_at': run.updated_at.isoformat(),
+                'branch': run.head_branch,
+                'jobs': job_details,
+                'job_count': len(job_details)
+            }
+            
+            dashboard_data.append(repo_data)
+            
+            # Summary for console
+            success_count = sum(1 for j in job_details if j['conclusion'] == 'success')
+            failure_count = sum(1 for j in job_details if j['conclusion'] == 'failure')
+            
+            print(f"  ✓ {repo.full_name}: {run.conclusion or run.status} "
+                  f"(workflow: {run.name}, jobs: {success_count}✅/{failure_count}❌)")
         
     except Exception as e:
         print(f"  ✗ Error fetching {repo.full_name}: {e}")
@@ -108,11 +119,17 @@ for repo in repos:
 # Sort by status (failed first, then in progress, then success)
 # Then by workflow type
 status_priority = {'failure': 0, 'cancelled': 1, 'in_progress': 2, 'success': 3, 'completed': 4}
-workflow_type_priority = {'🐭 Odoo': 0, '📦 3rd Party': 1, '🔄 Other': 2}
+workflow_type_priority = {
+    '🐭 Odoo (sync-fork)': 0,
+    '🐭 Odoo (sync-odoo)': 1,
+    '📦 3rd Party': 2,
+    '🔄 Other': 3
+}
 
 dashboard_data.sort(key=lambda x: (
     workflow_type_priority.get(x['workflow_type'], 99),
-    status_priority.get(x['conclusion'] or x['status'], 99)
+    status_priority.get(x['conclusion'] or x['status'], 99),
+    x['name']  # Secondary sort by repo name
 ))
 
 # Generate HTML
@@ -274,17 +291,6 @@ html = f"""<!DOCTYPE html>
             font-size: 11px;
             margin-top: 4px;
         }}
-        .expandable {{
-            cursor: pointer;
-        }}
-        .expand-icon {{
-            display: inline-block;
-            margin-right: 5px;
-            transition: transform 0.2s;
-        }}
-        .expanded .expand-icon {{
-            transform: rotate(90deg);
-        }}
         details {{
             margin-top: 8px;
         }}
@@ -310,7 +316,7 @@ html = f"""<!DOCTYPE html>
         <div class="stats">
             <div class="stat-card">
                 <div class="stat-number">{len(dashboard_data)}</div>
-                <div class="stat-label">Total Repos</div>
+                <div class="stat-label">Total Runs</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number success">{sum(1 for r in dashboard_data if r['conclusion'] == 'success')}</div>
@@ -336,12 +342,12 @@ for repo in dashboard_data:
     workflow_groups[wf_type].append(repo)
 
 # Generate tables for each workflow type
-for workflow_type in sorted(workflow_groups.keys()):
+for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_priority.get(x, 99)):
     repos_in_group = workflow_groups[workflow_type]
     
     html += f"""
         <div class="workflow-section">
-            <h2>{workflow_type} - {len(repos_in_group)} repos</h2>
+            <h2>{workflow_type} - {len(repos_in_group)} runs</h2>
             <table>
                 <thead>
                     <tr>
@@ -386,7 +392,7 @@ for workflow_type in sorted(workflow_groups.keys()):
             job_details_html = "<details><summary>Show job details</summary><div class='job-details'>"
             for job in jobs:
                 job_conclusion = job['conclusion'] or job['status']
-                job_class = job_conclusion.replace(' ', '_') if job_conclusion else 'unknown'
+                job_class = job_conclusion.replace(' ', '_').replace('-', '_') if job_conclusion else 'unknown'
                 job_details_html += f"<span class='job-item {job_class}'>{job['name']}</span>"
             job_details_html += "</div></details>"
         
@@ -425,7 +431,7 @@ with open('output/index.html', 'w') as f:
     f.write(html)
 
 print(f"\n✅ Dashboard generated successfully!")
-print(f"   Repos tracked: {len(dashboard_data)}")
+print(f"   Total runs tracked: {len(dashboard_data)}")
 print(f"   Filter applied: {workflow_filters if workflow_filters else 'None'}")
 
 # Close connection
