@@ -22,7 +22,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install PyGithub requests
+          pip install PyGithub PyYAML requests
 
       - name: Generate dashboard
         env:
