@@ -156,17 +156,6 @@
             font-size: 11px;
             margin-top: 4px;
         }
-        .expandable {
-            cursor: pointer;
-        }
-        .expand-icon {
-            display: inline-block;
-            margin-right: 5px;
-            transition: transform 0.2s;
-        }
-        .expanded .expand-icon {
-            transform: rotate(90deg);
-        }
         details {
             margin-top: 8px;
         }
@@ -187,15 +176,15 @@
 <body>
     <div class="container">
         <h1>🚀 GitHub Actions Dashboard - linserv<span class="filter-badge">🔍 sync-fork, sync-odoo, sync-3rd-party</span></h1>
-        <p class="last-updated">Last updated: 2025-11-11 13:00:03 UTC</p>
+        <p class="last-updated">Last updated: 2025-11-11 13:09:50 UTC</p>
         
         <div class="stats">
             <div class="stat-card">
-                <div class="stat-number">3</div>
-                <div class="stat-label">Total Repos</div>
+                <div class="stat-number">4</div>
+                <div class="stat-label">Total Runs</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number success">3</div>
+                <div class="stat-number success">4</div>
                 <div class="stat-label">Passing</div>
             </div>
             <div class="stat-card">
@@ -209,40 +198,7 @@
         </div>
 
         <div class="workflow-section">
-            <h2>📦 3rd Party - 1 repos</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Repository</th>
-                        <th>Workflow</th>
-                        <th>Branch</th>
-                        <th>Status</th>
-                        <th>Jobs</th>
-                        <th>Last Updated</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-
-                    <tr>
-                        <td class="repo-name"><a href="https://github.com/linserv/sync-forks" target="_blank">linserv/sync-forks</a></td>
-                        <td>sync-3rd-party</td>
-                        <td>main</td>
-                        <td><span class="status-badge badge-success">success</span></td>
-                        <td>
-                            <div>2✅</div>
-                            <details><summary>Show job details</summary><div class='job-details'><span class='job-item success'>Sync linserv/sale-workflow</span><span class='job-item success'>Sync linserv/CybroAddons</span></div></details>
-                        </td>
-                        <td>2025-11-11 12:58</td>
-                        <td><a href="https://github.com/linserv/sync-forks/actions/runs/19266359415" target="_blank">View Run →</a></td>
-                    </tr>
-
-                </tbody>
-            </table>
-        </div>
-
-        <div class="workflow-section">
-            <h2>🔄 Other - 2 repos</h2>
+            <h2>🐭 Odoo (sync-fork) - 2 runs</h2>
             <table>
                 <thead>
                     <tr>
@@ -281,6 +237,72 @@
                         </td>
                         <td>2025-11-11 08:53</td>
                         <td><a href="https://github.com/linserv/odoo/actions/runs/19260218869" target="_blank">View Run →</a></td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="workflow-section">
+            <h2>🐭 Odoo (sync-odoo) - 1 runs</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Repository</th>
+                        <th>Workflow</th>
+                        <th>Branch</th>
+                        <th>Status</th>
+                        <th>Jobs</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td class="repo-name"><a href="https://github.com/linserv/sync-forks" target="_blank">linserv/sync-forks</a></td>
+                        <td>sync-odoo</td>
+                        <td>main</td>
+                        <td><span class="status-badge badge-success">success</span></td>
+                        <td>
+                            <div>2✅</div>
+                            <details><summary>Show job details</summary><div class='job-details'><span class='job-item success'>Sync linserv/enterprise</span><span class='job-item success'>Sync linserv/odoo</span></div></details>
+                        </td>
+                        <td>2025-11-11 12:10</td>
+                        <td><a href="https://github.com/linserv/sync-forks/actions/runs/19265142332" target="_blank">View Run →</a></td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="workflow-section">
+            <h2>📦 3rd Party - 1 runs</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Repository</th>
+                        <th>Workflow</th>
+                        <th>Branch</th>
+                        <th>Status</th>
+                        <th>Jobs</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td class="repo-name"><a href="https://github.com/linserv/sync-forks" target="_blank">linserv/sync-forks</a></td>
+                        <td>sync-3rd-party</td>
+                        <td>main</td>
+                        <td><span class="status-badge badge-success">success</span></td>
+                        <td>
+                            <div>2✅</div>
+                            <details><summary>Show job details</summary><div class='job-details'><span class='job-item success'>Sync linserv/sale-workflow</span><span class='job-item success'>Sync linserv/CybroAddons</span></div></details>
+                        </td>
+                        <td>2025-11-11 12:58</td>
+                        <td><a href="https://github.com/linserv/sync-forks/actions/runs/19266359415" target="_blank">View Run →</a></td>
                     </tr>
 
                 </tbody>
