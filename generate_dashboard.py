@@ -9,7 +9,7 @@ g = Github(auth=auth)
 user_login = os.environ.get('DASHBOARD_USER', 'linservbot')
 
 # Filter for specific workflows (comma-separated, or leave empty for all)
-workflow_filter = os.environ.get('WORKFLOW_FILTER', 'sync-fork').lower()
+workflow_filter = os.environ.get('WORKFLOW_FILTER', 'sync-fork,sync-odoo,sync-3rd-party').lower()
 workflow_filters = [f.strip() for f in workflow_filter.split(',') if f.strip()]
 
 print(f"Workflow filter: {workflow_filters if workflow_filters else 'None (showing all workflows)'}")
@@ -56,6 +56,15 @@ for repo in repos:
                 print(f"  ⊘ {repo.full_name}: Skipped (workflow '{latest_run.name}' doesn't match filter)")
                 continue
         
+        # Determine workflow type/category
+        workflow_name_lower = latest_run.name.lower()
+        if 'odoo' in workflow_name_lower:
+            workflow_type = '🐭 Odoo'
+        elif '3rd' in workflow_name_lower or 'third' in workflow_name_lower:
+            workflow_type = '📦 3rd Party'
+        else:
+            workflow_type = '🔄 Other'
+        
         # Get jobs for this run (to show matrix details)
         jobs = latest_run.jobs()
         job_details = []
@@ -73,6 +82,7 @@ for repo in repos:
             'name': repo.full_name,
             'url': repo.html_url,
             'workflow_name': latest_run.name,
+            'workflow_type': workflow_type,
             'status': latest_run.status,
             'conclusion': latest_run.conclusion,
             'run_url': latest_run.html_url,
@@ -96,8 +106,14 @@ for repo in repos:
         continue
 
 # Sort by status (failed first, then in progress, then success)
+# Then by workflow type
 status_priority = {'failure': 0, 'cancelled': 1, 'in_progress': 2, 'success': 3, 'completed': 4}
-dashboard_data.sort(key=lambda x: status_priority.get(x['conclusion'] or x['status'], 99))
+workflow_type_priority = {'🐭 Odoo': 0, '📦 3rd Party': 1, '🔄 Other': 2}
+
+dashboard_data.sort(key=lambda x: (
+    workflow_type_priority.get(x['workflow_type'], 99),
+    status_priority.get(x['conclusion'] or x['status'], 99)
+))
 
 # Generate HTML
 html = f"""<!DOCTYPE html>
@@ -121,6 +137,14 @@ html = f"""<!DOCTYPE html>
         h1 {{
             margin-bottom: 10px;
             color: #58a6ff;
+        }}
+        h2 {{
+            margin-top: 30px;
+            margin-bottom: 20px;
+            color: #8b949e;
+            font-size: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #30363d;
         }}
         .last-updated {{
             color: #8b949e;
@@ -273,6 +297,9 @@ html = f"""<!DOCTYPE html>
         summary:hover {{
             text-decoration: underline;
         }}
+        .workflow-section {{
+            margin-bottom: 40px;
+        }}
     </style>
 </head>
 <body>
@@ -298,73 +325,93 @@ html = f"""<!DOCTYPE html>
                 <div class="stat-label">In Progress</div>
             </div>
         </div>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>Repository</th>
-                    <th>Workflow</th>
-                    <th>Branch</th>
-                    <th>Status</th>
-                    <th>Jobs</th>
-                    <th>Last Updated</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
 """
 
+# Group by workflow type
+workflow_groups = {}
 for repo in dashboard_data:
-    conclusion = repo['conclusion'] or repo['status']
-    badge_class = f"badge-{conclusion.replace('_', '-')}" if conclusion else "badge-cancelled"
-    
-    # Format date
-    try:
-        updated = datetime.fromisoformat(repo['updated_at'].replace('Z', '+00:00'))
-        time_str = updated.strftime('%Y-%m-%d %H:%M')
-    except:
-        time_str = repo['updated_at']
-    
-    # Job summary
-    jobs = repo['jobs']
-    success_jobs = sum(1 for j in jobs if j['conclusion'] == 'success')
-    failure_jobs = sum(1 for j in jobs if j['conclusion'] == 'failure')
-    in_progress_jobs = sum(1 for j in jobs if j['status'] == 'in_progress')
-    
-    job_summary = f"{success_jobs}✅"
-    if failure_jobs > 0:
-        job_summary += f" / {failure_jobs}❌"
-    if in_progress_jobs > 0:
-        job_summary += f" / {in_progress_jobs}⏳"
-    
-    # Job details HTML
-    job_details_html = ""
-    if len(jobs) > 1:  # Only show details if there are multiple jobs (matrix)
-        job_details_html = "<details><summary>Show job details</summary><div class='job-details'>"
-        for job in jobs:
-            job_conclusion = job['conclusion'] or job['status']
-            job_class = job_conclusion.replace(' ', '_') if job_conclusion else 'unknown'
-            job_details_html += f"<span class='job-item {job_class}'>{job['name']}</span>"
-        job_details_html += "</div></details>"
+    wf_type = repo['workflow_type']
+    if wf_type not in workflow_groups:
+        workflow_groups[wf_type] = []
+    workflow_groups[wf_type].append(repo)
+
+# Generate tables for each workflow type
+for workflow_type in sorted(workflow_groups.keys()):
+    repos_in_group = workflow_groups[workflow_type]
     
     html += f"""
-                <tr>
-                    <td class="repo-name"><a href="{repo['url']}" target="_blank">{repo['name']}</a></td>
-                    <td>{repo['workflow_name']}</td>
-                    <td>{repo['branch']}</td>
-                    <td><span class="status-badge {badge_class}">{conclusion or 'unknown'}</span></td>
-                    <td>
-                        <div>{job_summary}</div>
-                        {job_details_html}
-                    </td>
-                    <td>{time_str}</td>
-                    <td><a href="{repo['run_url']}" target="_blank">View Run →</a></td>
-                </tr>
+        <div class="workflow-section">
+            <h2>{workflow_type} - {len(repos_in_group)} repos</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Repository</th>
+                        <th>Workflow</th>
+                        <th>Branch</th>
+                        <th>Status</th>
+                        <th>Jobs</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+    
+    for repo in repos_in_group:
+        conclusion = repo['conclusion'] or repo['status']
+        badge_class = f"badge-{conclusion.replace('_', '-')}" if conclusion else "badge-cancelled"
+        
+        # Format date
+        try:
+            updated = datetime.fromisoformat(repo['updated_at'].replace('Z', '+00:00'))
+            time_str = updated.strftime('%Y-%m-%d %H:%M')
+        except:
+            time_str = repo['updated_at']
+        
+        # Job summary
+        jobs = repo['jobs']
+        success_jobs = sum(1 for j in jobs if j['conclusion'] == 'success')
+        failure_jobs = sum(1 for j in jobs if j['conclusion'] == 'failure')
+        in_progress_jobs = sum(1 for j in jobs if j['status'] == 'in_progress')
+        
+        job_summary = f"{success_jobs}✅"
+        if failure_jobs > 0:
+            job_summary += f" / {failure_jobs}❌"
+        if in_progress_jobs > 0:
+            job_summary += f" / {in_progress_jobs}⏳"
+        
+        # Job details HTML
+        job_details_html = ""
+        if len(jobs) > 1:  # Only show details if there are multiple jobs (matrix)
+            job_details_html = "<details><summary>Show job details</summary><div class='job-details'>"
+            for job in jobs:
+                job_conclusion = job['conclusion'] or job['status']
+                job_class = job_conclusion.replace(' ', '_') if job_conclusion else 'unknown'
+                job_details_html += f"<span class='job-item {job_class}'>{job['name']}</span>"
+            job_details_html += "</div></details>"
+        
+        html += f"""
+                    <tr>
+                        <td class="repo-name"><a href="{repo['url']}" target="_blank">{repo['name']}</a></td>
+                        <td>{repo['workflow_name']}</td>
+                        <td>{repo['branch']}</td>
+                        <td><span class="status-badge {badge_class}">{conclusion or 'unknown'}</span></td>
+                        <td>
+                            <div>{job_summary}</div>
+                            {job_details_html}
+                        </td>
+                        <td>{time_str}</td>
+                        <td><a href="{repo['run_url']}" target="_blank">View Run →</a></td>
+                    </tr>
+"""
+    
+    html += """
+                </tbody>
+            </table>
+        </div>
 """
 
 html += """
-            </tbody>
-        </table>
     </div>
 </body>
 </html>
