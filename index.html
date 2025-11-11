@@ -140,98 +140,10 @@
         a:hover {
             text-decoration: underline;
         }
-        .jobs-container {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #30363d;
-        }
-        .jobs-title {
+        .job-summary {
             font-size: 12px;
-            font-weight: 600;
-            color: #8b949e;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-        .job-list {
-            display: grid;
-            gap: 8px;
-        }
-        .job-item {
-            background: #0d1117;
-            border-radius: 4px;
-            padding: 10px 12px;
-            border-left: 3px solid;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            font-size: 12px;
-        }
-        .job-item.success {
-            border-left-color: #3fb950;
-            background: rgba(63, 185, 80, 0.1);
-        }
-        .job-item.failure {
-            border-left-color: #f85149;
-            background: rgba(248, 81, 73, 0.1);
-        }
-        .job-item.in_progress {
-            border-left-color: #d29922;
-            background: rgba(210, 153, 34, 0.1);
-        }
-        .job-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .job-name {
-            flex: 1;
-            word-break: break-word;
+            color: #c9d1d9;
             font-weight: 500;
-        }
-        .job-status {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 11px;
-            white-space: nowrap;
-        }
-        .job-status.success {
-            background: rgba(63, 185, 80, 0.2);
-            color: #3fb950;
-        }
-        .job-status.failure {
-            background: rgba(248, 81, 73, 0.2);
-            color: #f85149;
-        }
-        .job-status.in_progress {
-            background: rgba(210, 153, 34, 0.2);
-            color: #d29922;
-        }
-        .branches-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .branch-item {
-            background: rgba(88, 166, 255, 0.15);
-            border: 1px solid rgba(88, 166, 255, 0.3);
-            color: #58a6ff;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-        }
-        .branch-item.success {
-            background: rgba(63, 185, 80, 0.15);
-            border-color: rgba(63, 185, 80, 0.3);
-            color: #3fb950;
-        }
-        .branch-item.failure {
-            background: rgba(248, 81, 73, 0.15);
-            border-color: rgba(248, 81, 73, 0.3);
-            color: #f85149;
         }
         .filter-badge {
             display: inline-block;
@@ -246,17 +158,12 @@
         .workflow-section {
             margin-bottom: 40px;
         }
-        .no-branches {
-            color: #8b949e;
-            font-style: italic;
-            font-size: 11px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 GitHub Actions Dashboard - linserv<span class="filter-badge">🔍 sync-odoo, sync-3rd-party</span></h1>
-        <p class="last-updated">Last updated: 2025-11-11 13:27:46 UTC</p>
+        <p class="last-updated">Last updated: 2025-11-11 13:31:56 UTC</p>
         
         <div class="stats">
             <div class="stat-card">
@@ -295,7 +202,7 @@
                     </div>
                     <div class="meta-item">
                         <span>Jobs:</span>
-                        <strong>2✅</strong>
+                        <strong class="job-summary">2✅</strong>
                     </div>
                     <div class="meta-item">
                         <span>Updated:</span>
@@ -305,23 +212,6 @@
                         <a href="https://github.com/linserv/sync-forks/actions/runs/19265142332" target="_blank">View Run →</a>
                     </div>
                 </div>
-                <div class="jobs-container"><div class="jobs-title">📊 Synced Repositories & Branches</div><div class="job-list">
-                    <div class="job-item success">
-                        <div class="job-header">
-                            <span class="job-name"><strong>linserv/enterprise</strong></span>
-                            <span class="job-status success">✅ success</span>
-                        </div>
-                        <div class="no-branches">⚠️ (branch details not found in logs)</div>
-                    </div>
-                
-                    <div class="job-item success">
-                        <div class="job-header">
-                            <span class="job-name"><strong>linserv/odoo</strong></span>
-                            <span class="job-status success">✅ success</span>
-                        </div>
-                        <div class="no-branches">⚠️ (branch details not found in logs)</div>
-                    </div>
-                </div></div>
             </div>
 
         </div>
@@ -344,7 +234,7 @@
                     </div>
                     <div class="meta-item">
                         <span>Jobs:</span>
-                        <strong>2✅</strong>
+                        <strong class="job-summary">2✅</strong>
                     </div>
                     <div class="meta-item">
                         <span>Updated:</span>
@@ -354,23 +244,6 @@
                         <a href="https://github.com/linserv/sync-forks/actions/runs/19266359415" target="_blank">View Run →</a>
                     </div>
                 </div>
-                <div class="jobs-container"><div class="jobs-title">📊 Synced Repositories & Branches</div><div class="job-list">
-                    <div class="job-item success">
-                        <div class="job-header">
-                            <span class="job-name"><strong>linserv/sale-workflow</strong></span>
-                            <span class="job-status success">✅ success</span>
-                        </div>
-                        <div class="no-branches">⚠️ (branch details not found in logs)</div>
-                    </div>
-                
-                    <div class="job-item success">
-                        <div class="job-header">
-                            <span class="job-name"><strong>linserv/CybroAddons</strong></span>
-                            <span class="job-status success">✅ success</span>
-                        </div>
-                        <div class="no-branches">⚠️ (branch details not found in logs)</div>
-                    </div>
-                </div></div>
             </div>
 
         </div>
