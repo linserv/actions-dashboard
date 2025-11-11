@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import yaml
 from github import Github, Auth
 from datetime import datetime
 
@@ -23,6 +24,46 @@ except:
     # Fall back to user
     entity = g.get_user(user_login)
     print(f"Fetching workflow status for user: {user_login}")
+
+# Load branch information from workflow files
+branch_config = {}
+
+def load_workflow_branches(workflow_file):
+    """Load branches configuration from workflow YAML files"""
+    config = {}
+    try:
+        if os.path.exists(workflow_file):
+            with open(workflow_file, 'r') as f:
+                workflow_data = yaml.safe_load(f)
+                
+                # Extract matrix configuration
+                if 'jobs' in workflow_data:
+                    for job_name, job_data in workflow_data['jobs'].items():
+                        if 'strategy' in job_data and 'matrix' in job_data['strategy']:
+                            matrix = job_data['strategy']['matrix']
+                            if 'include' in matrix:
+                                for item in matrix['include']:
+                                    if 'fork_repo' in item and 'branches' in item:
+                                        fork_repo = item['fork_repo']
+                                        branches = item['branches']
+                                        # Parse branches (can be comma-separated string or list)
+                                        if isinstance(branches, str):
+                                            branch_list = [b.strip() for b in branches.split(',')]
+                                        else:
+                                            branch_list = branches
+                                        config[fork_repo] = branch_list
+            print(f"  ✓ Loaded {len(config)} repos from {workflow_file}")
+    except Exception as e:
+        print(f"  ⚠️  Could not load {workflow_file}: {e}")
+    
+    return config
+
+# Load both workflow files
+print("Loading workflow branch configurations...")
+branch_config.update(load_workflow_branches('.github/workflows/sync-odoo.yml'))
+branch_config.update(load_workflow_branches('.github/workflows/sync-3rd-party.yml'))
+
+print(f"Total repos with branch info: {len(branch_config)}\n")
 
 # Get all repos
 repos = entity.get_repos()
@@ -81,12 +122,26 @@ for repo in repos:
             for job in jobs:
                 job_name = job.name
                 
+                # Extract repo name from job name (e.g., "Sync linserv/CybroAddons" -> "linserv/CybroAddons")
+                repo_from_job = None
+                if 'Sync' in job_name:
+                    parts = job_name.replace('Sync', '').strip()
+                    if parts:
+                        repo_from_job = parts
+                
+                # Get branches for this job from config
+                branches = []
+                if repo_from_job and repo_from_job in branch_config:
+                    branches = branch_config[repo_from_job]
+                
                 job_details.append({
                     'name': job_name,
                     'status': job.status,
                     'conclusion': job.conclusion,
                     'started_at': job.started_at.isoformat() if job.started_at else None,
                     'completed_at': job.completed_at.isoformat() if job.completed_at else None,
+                    'branches': branches,
+                    'repo_from_job': repo_from_job,
                 })
             
             repo_data = {
@@ -218,6 +273,7 @@ html = f"""<!DOCTYPE html>
             gap: 12px;
             flex: 1;
             min-width: 300px;
+            flex-wrap: wrap;
         }}
         .repo-name {{
             font-weight: 600;
@@ -352,6 +408,7 @@ html = f"""<!DOCTYPE html>
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
+            margin-top: 4px;
         }}
         .branch-item {{
             background: rgba(88, 166, 255, 0.15);
@@ -452,7 +509,7 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
         if in_progress_jobs > 0:
             job_summary += f" / {in_progress_jobs}⏳"
         
-        # Build jobs HTML with branches extracted from job names
+        # Build jobs HTML with branches
         jobs_html = ""
         if len(jobs) > 0:
             jobs_html = '<div class="jobs-container">'
@@ -470,12 +527,21 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
                 
                 status_badge = f'<span class="job-status {job_class}">{"✅ success" if job_conclusion == "success" else "❌ failed" if job_conclusion == "failure" else "⏳ in progress"}</span>'
                 
+                # Build branches display
+                branches_html = ""
+                if job.get('branches') and len(job['branches']) > 0:
+                    branches_html = '<div class="branches-list">'
+                    for branch in job['branches']:
+                        branches_html += f'<span class="branch-item {job_class}">🌿 {branch}</span>'
+                    branches_html += '</div>'
+                
                 jobs_html += f'''
                     <div class="job-item {job_class}">
                         <div class="job-header">
                             <span class="job-name">{job_display_name}</span>
                             {status_badge}
                         </div>
+                        {branches_html}
                     </div>
                 '''
             
