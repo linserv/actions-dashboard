@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 import os
-import re
 from github import Github, Auth
 from datetime import datetime
-import urllib.request
-import json
 
 # Initialize GitHub client with new auth method
 auth = Auth.Token(os.environ['GITHUB_TOKEN'])
@@ -31,52 +28,6 @@ except:
 repos = entity.get_repos()
 
 dashboard_data = []
-
-def extract_branch_details_from_logs(job, token):
-    """Extract branch sync details from job logs"""
-    branch_details = []
-    try:
-        # Get job logs using GitHub API
-        logs_url = job.logs_url
-        if logs_url:
-            req = urllib.request.Request(logs_url)
-            req.add_header('Authorization', f'token {token}')
-            req.add_header('Accept', 'application/vnd.github.v3.raw')
-            
-            try:
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    logs = response.read().decode('utf-8')
-                    
-                    # Parse branch sync lines from logs
-                    # Looking for patterns like:
-                    # "🔄 Syncing linserv/odoo - 16.0"
-                    # "✅ Synced!"
-                    lines = logs.split('\n')
-                    
-                    current_branch = None
-                    for line in lines:
-                        # Look for the "Syncing" line which contains branch info
-                        sync_match = re.search(r'🔄 Syncing .* - ([^\s\n]+)', line)
-                        if sync_match:
-                            current_branch = sync_match.group(1)
-                            if current_branch not in branch_details:
-                                branch_details.append(current_branch)
-                        
-                        # Alternative pattern without emoji
-                        elif 'Syncing' in line and ' - ' in line:
-                            parts = line.split(' - ')
-                            if len(parts) >= 2:
-                                branch = parts[-1].strip()
-                                if branch and branch not in branch_details and len(branch) < 20:
-                                    branch_details.append(branch)
-            except urllib.error.HTTPError as e:
-                print(f"    Warning: Could not fetch logs (HTTP {e.code})")
-            except Exception as e:
-                print(f"    Warning: Could not fetch logs: {e}")
-    except Exception as e:
-        print(f"    Warning: Error extracting branch details: {e}")
-    
-    return branch_details
 
 for repo in repos:
     try:
@@ -130,16 +81,12 @@ for repo in repos:
             for job in jobs:
                 job_name = job.name
                 
-                # Extract branch details from job logs
-                branch_details = extract_branch_details_from_logs(job, os.environ['GITHUB_TOKEN'])
-                
                 job_details.append({
                     'name': job_name,
                     'status': job.status,
                     'conclusion': job.conclusion,
                     'started_at': job.started_at.isoformat() if job.started_at else None,
                     'completed_at': job.completed_at.isoformat() if job.completed_at else None,
-                    'branches': branch_details,
                 })
             
             repo_data = {
@@ -163,7 +110,7 @@ for repo in repos:
             failure_count = sum(1 for j in job_details if j['conclusion'] == 'failure')
             
             print(f"  ✓ {repo.full_name}: {run.conclusion or run.status} "
-                  f"(workflow: {run.name}, jobs: {success_count}✅/{failure_count}❌, branches: {len([b for j in job_details for b in j['branches']])})")
+                  f"(workflow: {run.name}, jobs: {success_count}✅/{failure_count}❌)")
         
     except Exception as e:
         print(f"  ✗ Error fetching {repo.full_name}: {e}")
@@ -327,98 +274,10 @@ html = f"""<!DOCTYPE html>
         a:hover {{
             text-decoration: underline;
         }}
-        .jobs-container {{
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #30363d;
-        }}
-        .jobs-title {{
+        .job-summary {{
             font-size: 12px;
-            font-weight: 600;
-            color: #8b949e;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }}
-        .job-list {{
-            display: grid;
-            gap: 8px;
-        }}
-        .job-item {{
-            background: #0d1117;
-            border-radius: 4px;
-            padding: 10px 12px;
-            border-left: 3px solid;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            font-size: 12px;
-        }}
-        .job-item.success {{
-            border-left-color: #3fb950;
-            background: rgba(63, 185, 80, 0.1);
-        }}
-        .job-item.failure {{
-            border-left-color: #f85149;
-            background: rgba(248, 81, 73, 0.1);
-        }}
-        .job-item.in_progress {{
-            border-left-color: #d29922;
-            background: rgba(210, 153, 34, 0.1);
-        }}
-        .job-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }}
-        .job-name {{
-            flex: 1;
-            word-break: break-word;
+            color: #c9d1d9;
             font-weight: 500;
-        }}
-        .job-status {{
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 11px;
-            white-space: nowrap;
-        }}
-        .job-status.success {{
-            background: rgba(63, 185, 80, 0.2);
-            color: #3fb950;
-        }}
-        .job-status.failure {{
-            background: rgba(248, 81, 73, 0.2);
-            color: #f85149;
-        }}
-        .job-status.in_progress {{
-            background: rgba(210, 153, 34, 0.2);
-            color: #d29922;
-        }}
-        .branches-list {{
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }}
-        .branch-item {{
-            background: rgba(88, 166, 255, 0.15);
-            border: 1px solid rgba(88, 166, 255, 0.3);
-            color: #58a6ff;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-        }}
-        .branch-item.success {{
-            background: rgba(63, 185, 80, 0.15);
-            border-color: rgba(63, 185, 80, 0.3);
-            color: #3fb950;
-        }}
-        .branch-item.failure {{
-            background: rgba(248, 81, 73, 0.15);
-            border-color: rgba(248, 81, 73, 0.3);
-            color: #f85149;
         }}
         .filter-badge {{
             display: inline-block;
@@ -432,11 +291,6 @@ html = f"""<!DOCTYPE html>
         }}
         .workflow-section {{
             margin-bottom: 40px;
-        }}
-        .no-branches {{
-            color: #8b949e;
-            font-style: italic;
-            font-size: 11px;
         }}
     </style>
 </head>
@@ -505,46 +359,6 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
         if in_progress_jobs > 0:
             job_summary += f" / {in_progress_jobs}⏳"
         
-        # Build jobs HTML
-        jobs_html = ""
-        if len(jobs) > 0:
-            jobs_html = '<div class="jobs-container">'
-            jobs_html += '<div class="jobs-title">📊 Synced Repositories & Branches</div>'
-            jobs_html += '<div class="job-list">'
-            
-            for job in jobs:
-                job_conclusion = job['conclusion'] or job['status']
-                job_class = job_conclusion.replace(' ', '_').replace('-', '_') if job_conclusion else 'unknown'
-                
-                job_display_name = job['name']
-                if 'Sync' in job['name']:
-                    parts = job['name'].replace('Sync', '').strip()
-                    job_display_name = f"<strong>{parts}</strong>"
-                
-                status_badge = f'<span class="job-status {job_class}">{"✅ success" if job_conclusion == "success" else "❌ failed" if job_conclusion == "failure" else "⏳ in progress"}</span>'
-                
-                # Build branches display
-                branches_html = ""
-                if job.get('branches') and len(job['branches']) > 0:
-                    branches_html = '<div class="branches-list">'
-                    for branch in job['branches']:
-                        branches_html += f'<span class="branch-item {job_class}">🌿 {branch}</span>'
-                    branches_html += '</div>'
-                else:
-                    branches_html = '<div class="no-branches">⚠️ (branch details not found in logs)</div>'
-                
-                jobs_html += f'''
-                    <div class="job-item {job_class}">
-                        <div class="job-header">
-                            <span class="job-name">{job_display_name}</span>
-                            {status_badge}
-                        </div>
-                        {branches_html}
-                    </div>
-                '''
-            
-            jobs_html += '</div></div>'
-        
         html += f"""
             <div class="dashboard-row">
                 <div class="row-header">
@@ -561,7 +375,7 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
                     </div>
                     <div class="meta-item">
                         <span>Jobs:</span>
-                        <strong>{job_summary}</strong>
+                        <strong class="job-summary">{job_summary}</strong>
                     </div>
                     <div class="meta-item">
                         <span>Updated:</span>
@@ -571,7 +385,6 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
                         <a href="{repo['run_url']}" target="_blank">View Run →</a>
                     </div>
                 </div>
-                {jobs_html}
             </div>
 """
     
