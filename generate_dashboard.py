@@ -9,7 +9,7 @@ g = Github(auth=auth)
 user_login = os.environ.get('DASHBOARD_USER', 'linservbot')
 
 # Filter for specific workflows (comma-separated, or leave empty for all)
-workflow_filter = os.environ.get('WORKFLOW_FILTER', 'sync-fork,sync-odoo,sync-3rd-party').lower()
+workflow_filter = os.environ.get('WORKFLOW_FILTER', 'sync-odoo,sync-3rd-party').lower()
 workflow_filters = [f.strip() for f in workflow_filter.split(',') if f.strip()]
 
 print(f"Workflow filter: {workflow_filters if workflow_filters else 'None (showing all workflows)'}")
@@ -67,10 +67,8 @@ for repo in repos:
             processed_workflows.add(run.name)
             
             # Determine workflow type/category
-            if 'sync-fork' in workflow_name_lower:
-                workflow_type = '🐭 Odoo (sync-fork)'
-            elif 'sync-odoo' in workflow_name_lower:
-                workflow_type = '🐭 Odoo (sync-odoo)'
+            if 'sync-odoo' in workflow_name_lower:
+                workflow_type = '🐭 Odoo'
             elif '3rd' in workflow_name_lower or 'third' in workflow_name_lower or 'sync-3rd' in workflow_name_lower:
                 workflow_type = '📦 3rd Party'
             else:
@@ -81,8 +79,12 @@ for repo in repos:
             job_details = []
             
             for job in jobs:
+                # Extract branch info from job name if available
+                # Job names are usually formatted like: "Sync gediminasvenc/fork1" or "Sync branch_name"
+                job_name = job.name
+                
                 job_details.append({
-                    'name': job.name,
+                    'name': job_name,
                     'status': job.status,
                     'conclusion': job.conclusion,
                     'started_at': job.started_at.isoformat() if job.started_at else None,
@@ -120,10 +122,9 @@ for repo in repos:
 # Then by workflow type
 status_priority = {'failure': 0, 'cancelled': 1, 'in_progress': 2, 'success': 3, 'completed': 4}
 workflow_type_priority = {
-    '🐭 Odoo (sync-fork)': 0,
-    '🐭 Odoo (sync-odoo)': 1,
-    '📦 3rd Party': 2,
-    '🔄 Other': 3
+    '🐭 Odoo': 0,
+    '📦 3rd Party': 1,
+    '🔄 Other': 2
 }
 
 dashboard_data.sort(key=lambda x: (
@@ -148,7 +149,7 @@ html = f"""<!DOCTYPE html>
             padding: 20px;
         }}
         .container {{
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }}
         h1 {{
@@ -193,32 +194,47 @@ html = f"""<!DOCTYPE html>
         .success {{ color: #3fb950; }}
         .failure {{ color: #f85149; }}
         .in-progress {{ color: #d29922; }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
+        .dashboard-row {{
             background: #161b22;
+            border: 1px solid #30363d;
             border-radius: 6px;
-            overflow: hidden;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
+            padding: 16px;
+            transition: background-color 0.2s;
         }}
-        th, td {{
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #30363d;
-        }}
-        th {{
-            background: #0d1117;
-            font-weight: 600;
-            color: #8b949e;
-            text-transform: uppercase;
-            font-size: 12px;
-        }}
-        tr:hover {{
+        .dashboard-row:hover {{
             background: #1c2128;
+        }}
+        .row-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }}
+        .repo-info {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 300px;
+        }}
+        .repo-name {{
+            font-weight: 600;
+            color: #58a6ff;
+        }}
+        .branch-badge {{
+            background: #1f6feb;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
         }}
         .status-badge {{
             display: inline-block;
-            padding: 4px 8px;
+            padding: 4px 12px;
             border-radius: 12px;
             font-size: 12px;
             font-weight: 600;
@@ -240,6 +256,17 @@ html = f"""<!DOCTYPE html>
             background: #2b2f36;
             color: #8b949e;
         }}
+        .meta-info {{
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #8b949e;
+        }}
+        .meta-item {{
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }}
         a {{
             color: #58a6ff;
             text-decoration: none;
@@ -247,8 +274,67 @@ html = f"""<!DOCTYPE html>
         a:hover {{
             text-decoration: underline;
         }}
-        .repo-name {{
+        .jobs-container {{
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #30363d;
+        }}
+        .jobs-title {{
+            font-size: 12px;
             font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }}
+        .job-list {{
+            display: grid;
+            gap: 8px;
+        }}
+        .job-item {{
+            background: #0d1117;
+            border-radius: 4px;
+            padding: 8px 12px;
+            border-left: 3px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }}
+        .job-item.success {{
+            border-left-color: #3fb950;
+            background: rgba(63, 185, 80, 0.1);
+        }}
+        .job-item.failure {{
+            border-left-color: #f85149;
+            background: rgba(248, 81, 73, 0.1);
+        }}
+        .job-item.in_progress {{
+            border-left-color: #d29922;
+            background: rgba(210, 153, 34, 0.1);
+        }}
+        .job-name {{
+            flex: 1;
+            word-break: break-word;
+        }}
+        .job-status {{
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-left: 8px;
+            white-space: nowrap;
+        }}
+        .job-status.success {{
+            background: rgba(63, 185, 80, 0.2);
+            color: #3fb950;
+        }}
+        .job-status.failure {{
+            background: rgba(248, 81, 73, 0.2);
+            color: #f85149;
+        }}
+        .job-status.in_progress {{
+            background: rgba(210, 153, 34, 0.2);
+            color: #d29922;
         }}
         .filter-badge {{
             display: inline-block;
@@ -259,49 +345,6 @@ html = f"""<!DOCTYPE html>
             font-size: 13px;
             margin-left: 10px;
             font-weight: 500;
-        }}
-        .job-details {{
-            margin-top: 8px;
-            padding: 8px;
-            background: #0d1117;
-            border-radius: 4px;
-            font-size: 12px;
-        }}
-        .job-item {{
-            display: inline-block;
-            margin-right: 12px;
-            padding: 3px 8px;
-            border-radius: 3px;
-            margin-bottom: 4px;
-        }}
-        .job-item.success {{
-            background: #1a3c25;
-            color: #3fb950;
-        }}
-        .job-item.failure {{
-            background: #3c1c1f;
-            color: #f85149;
-        }}
-        .job-item.in_progress {{
-            background: #3c2e1a;
-            color: #d29922;
-        }}
-        .job-summary {{
-            color: #8b949e;
-            font-size: 11px;
-            margin-top: 4px;
-        }}
-        details {{
-            margin-top: 8px;
-        }}
-        summary {{
-            cursor: pointer;
-            color: #58a6ff;
-            font-size: 12px;
-            padding: 4px;
-        }}
-        summary:hover {{
-            text-decoration: underline;
         }}
         .workflow-section {{
             margin-bottom: 40px;
@@ -341,26 +384,13 @@ for repo in dashboard_data:
         workflow_groups[wf_type] = []
     workflow_groups[wf_type].append(repo)
 
-# Generate tables for each workflow type
+# Generate sections for each workflow type
 for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_priority.get(x, 99)):
     repos_in_group = workflow_groups[workflow_type]
     
     html += f"""
         <div class="workflow-section">
             <h2>{workflow_type} - {len(repos_in_group)} runs</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Repository</th>
-                        <th>Workflow</th>
-                        <th>Branch</th>
-                        <th>Status</th>
-                        <th>Jobs</th>
-                        <th>Last Updated</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
 """
     
     for repo in repos_in_group:
@@ -386,34 +416,68 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
         if in_progress_jobs > 0:
             job_summary += f" / {in_progress_jobs}⏳"
         
-        # Job details HTML
-        job_details_html = ""
-        if len(jobs) > 1:  # Only show details if there are multiple jobs (matrix)
-            job_details_html = "<details><summary>Show job details</summary><div class='job-details'>"
+        # Build jobs HTML
+        jobs_html = ""
+        if len(jobs) > 0:
+            jobs_html = '<div class="jobs-container">'
+            jobs_html += '<div class="jobs-title">📊 Job Details</div>'
+            jobs_html += '<div class="job-list">'
+            
             for job in jobs:
                 job_conclusion = job['conclusion'] or job['status']
                 job_class = job_conclusion.replace(' ', '_').replace('-', '_') if job_conclusion else 'unknown'
-                job_details_html += f"<span class='job-item {job_class}'>{job['name']}</span>"
-            job_details_html += "</div></details>"
+                
+                # Extract useful info from job name
+                job_display_name = job['name']
+                
+                # Try to extract fork repo and branch info from job name
+                # Job names typically look like: "Sync gediminasvenc/repo1" or "Sync branch main"
+                if 'Sync' in job['name']:
+                    parts = job['name'].replace('Sync', '').strip()
+                    job_display_name = f"<strong>{parts}</strong>"
+                
+                status_badge = f'<span class="job-status {job_class}">{"✅ success" if job_conclusion == "success" else "❌ failed" if job_conclusion == "failure" else "⏳ in progress"}</span>'
+                
+                jobs_html += f'''
+                    <div class="job-item {job_class}">
+                        <span class="job-name">{job_display_name}</span>
+                        {status_badge}
+                    </div>
+                '''
+            
+            jobs_html += '</div></div>'
         
         html += f"""
-                    <tr>
-                        <td class="repo-name"><a href="{repo['url']}" target="_blank">{repo['name']}</a></td>
-                        <td>{repo['workflow_name']}</td>
-                        <td>{repo['branch']}</td>
-                        <td><span class="status-badge {badge_class}">{conclusion or 'unknown'}</span></td>
-                        <td>
-                            <div>{job_summary}</div>
-                            {job_details_html}
-                        </td>
-                        <td>{time_str}</td>
-                        <td><a href="{repo['run_url']}" target="_blank">View Run →</a></td>
-                    </tr>
+            <div class="dashboard-row">
+                <div class="row-header">
+                    <div class="repo-info">
+                        <span class="repo-name"><a href="{repo['url']}" target="_blank">📁 {repo['name']}</a></span>
+                        <span class="branch-badge">🌿 {repo['branch']}</span>
+                    </div>
+                    <span class="status-badge {badge_class}">{conclusion.upper()}</span>
+                </div>
+                <div class="meta-info">
+                    <div class="meta-item">
+                        <span>Workflow:</span>
+                        <strong>{repo['workflow_name']}</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>Jobs:</span>
+                        <strong>{job_summary}</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>Updated:</span>
+                        <strong>{time_str}</strong>
+                    </div>
+                    <div class="meta-item">
+                        <a href="{repo['run_url']}" target="_blank">View Run →</a>
+                    </div>
+                </div>
+                {jobs_html}
+            </div>
 """
     
     html += """
-                </tbody>
-            </table>
         </div>
 """
 
