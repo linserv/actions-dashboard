@@ -13,7 +13,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
         h1 {
@@ -58,32 +58,47 @@
         .success { color: #3fb950; }
         .failure { color: #f85149; }
         .in-progress { color: #d29922; }
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .dashboard-row {
             background: #161b22;
+            border: 1px solid #30363d;
             border-radius: 6px;
-            overflow: hidden;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
+            padding: 16px;
+            transition: background-color 0.2s;
         }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #30363d;
-        }
-        th {
-            background: #0d1117;
-            font-weight: 600;
-            color: #8b949e;
-            text-transform: uppercase;
-            font-size: 12px;
-        }
-        tr:hover {
+        .dashboard-row:hover {
             background: #1c2128;
+        }
+        .row-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .repo-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 300px;
+        }
+        .repo-name {
+            font-weight: 600;
+            color: #58a6ff;
+        }
+        .branch-badge {
+            background: #1f6feb;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
         }
         .status-badge {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 4px 12px;
             border-radius: 12px;
             font-size: 12px;
             font-weight: 600;
@@ -105,6 +120,17 @@
             background: #2b2f36;
             color: #8b949e;
         }
+        .meta-info {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #8b949e;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
         a {
             color: #58a6ff;
             text-decoration: none;
@@ -112,8 +138,67 @@
         a:hover {
             text-decoration: underline;
         }
-        .repo-name {
+        .jobs-container {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #30363d;
+        }
+        .jobs-title {
+            font-size: 12px;
             font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .job-list {
+            display: grid;
+            gap: 8px;
+        }
+        .job-item {
+            background: #0d1117;
+            border-radius: 4px;
+            padding: 8px 12px;
+            border-left: 3px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+        .job-item.success {
+            border-left-color: #3fb950;
+            background: rgba(63, 185, 80, 0.1);
+        }
+        .job-item.failure {
+            border-left-color: #f85149;
+            background: rgba(248, 81, 73, 0.1);
+        }
+        .job-item.in_progress {
+            border-left-color: #d29922;
+            background: rgba(210, 153, 34, 0.1);
+        }
+        .job-name {
+            flex: 1;
+            word-break: break-word;
+        }
+        .job-status {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+        .job-status.success {
+            background: rgba(63, 185, 80, 0.2);
+            color: #3fb950;
+        }
+        .job-status.failure {
+            background: rgba(248, 81, 73, 0.2);
+            color: #f85149;
+        }
+        .job-status.in_progress {
+            background: rgba(210, 153, 34, 0.2);
+            color: #d29922;
         }
         .filter-badge {
             display: inline-block;
@@ -125,49 +210,6 @@
             margin-left: 10px;
             font-weight: 500;
         }
-        .job-details {
-            margin-top: 8px;
-            padding: 8px;
-            background: #0d1117;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        .job-item {
-            display: inline-block;
-            margin-right: 12px;
-            padding: 3px 8px;
-            border-radius: 3px;
-            margin-bottom: 4px;
-        }
-        .job-item.success {
-            background: #1a3c25;
-            color: #3fb950;
-        }
-        .job-item.failure {
-            background: #3c1c1f;
-            color: #f85149;
-        }
-        .job-item.in_progress {
-            background: #3c2e1a;
-            color: #d29922;
-        }
-        .job-summary {
-            color: #8b949e;
-            font-size: 11px;
-            margin-top: 4px;
-        }
-        details {
-            margin-top: 8px;
-        }
-        summary {
-            cursor: pointer;
-            color: #58a6ff;
-            font-size: 12px;
-            padding: 4px;
-        }
-        summary:hover {
-            text-decoration: underline;
-        }
         .workflow-section {
             margin-bottom: 40px;
         }
@@ -176,7 +218,7 @@
 <body>
     <div class="container">
         <h1>🚀 GitHub Actions Dashboard - linserv<span class="filter-badge">🔍 sync-odoo, sync-3rd-party</span></h1>
-        <p class="last-updated">Last updated: 2025-11-11 13:12:57 UTC</p>
+        <p class="last-updated">Last updated: 2025-11-11 13:17:25 UTC</p>
         
         <div class="stats">
             <div class="stat-card">
@@ -198,69 +240,89 @@
         </div>
 
         <div class="workflow-section">
-            <h2>🐭 Odoo (sync-odoo) - 1 runs</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Repository</th>
-                        <th>Workflow</th>
-                        <th>Branch</th>
-                        <th>Status</th>
-                        <th>Jobs</th>
-                        <th>Last Updated</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <h2>🐭 Odoo - 1 runs</h2>
 
-                    <tr>
-                        <td class="repo-name"><a href="https://github.com/linserv/sync-forks" target="_blank">linserv/sync-forks</a></td>
-                        <td>sync-odoo</td>
-                        <td>main</td>
-                        <td><span class="status-badge badge-success">success</span></td>
-                        <td>
-                            <div>2✅</div>
-                            <details><summary>Show job details</summary><div class='job-details'><span class='job-item success'>Sync linserv/enterprise</span><span class='job-item success'>Sync linserv/odoo</span></div></details>
-                        </td>
-                        <td>2025-11-11 12:10</td>
-                        <td><a href="https://github.com/linserv/sync-forks/actions/runs/19265142332" target="_blank">View Run →</a></td>
-                    </tr>
+            <div class="dashboard-row">
+                <div class="row-header">
+                    <div class="repo-info">
+                        <span class="repo-name"><a href="https://github.com/linserv/sync-forks" target="_blank">📁 linserv/sync-forks</a></span>
+                        <span class="branch-badge">🌿 main</span>
+                    </div>
+                    <span class="status-badge badge-success">SUCCESS</span>
+                </div>
+                <div class="meta-info">
+                    <div class="meta-item">
+                        <span>Workflow:</span>
+                        <strong>sync-odoo</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>Jobs:</span>
+                        <strong>2✅</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>Updated:</span>
+                        <strong>2025-11-11 12:10</strong>
+                    </div>
+                    <div class="meta-item">
+                        <a href="https://github.com/linserv/sync-forks/actions/runs/19265142332" target="_blank">View Run →</a>
+                    </div>
+                </div>
+                <div class="jobs-container"><div class="jobs-title">📊 Job Details</div><div class="job-list">
+                    <div class="job-item success">
+                        <span class="job-name"><strong>linserv/enterprise</strong></span>
+                        <span class="job-status success">✅ success</span>
+                    </div>
+                
+                    <div class="job-item success">
+                        <span class="job-name"><strong>linserv/odoo</strong></span>
+                        <span class="job-status success">✅ success</span>
+                    </div>
+                </div></div>
+            </div>
 
-                </tbody>
-            </table>
         </div>
 
         <div class="workflow-section">
             <h2>📦 3rd Party - 1 runs</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Repository</th>
-                        <th>Workflow</th>
-                        <th>Branch</th>
-                        <th>Status</th>
-                        <th>Jobs</th>
-                        <th>Last Updated</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
 
-                    <tr>
-                        <td class="repo-name"><a href="https://github.com/linserv/sync-forks" target="_blank">linserv/sync-forks</a></td>
-                        <td>sync-3rd-party</td>
-                        <td>main</td>
-                        <td><span class="status-badge badge-success">success</span></td>
-                        <td>
-                            <div>2✅</div>
-                            <details><summary>Show job details</summary><div class='job-details'><span class='job-item success'>Sync linserv/sale-workflow</span><span class='job-item success'>Sync linserv/CybroAddons</span></div></details>
-                        </td>
-                        <td>2025-11-11 12:58</td>
-                        <td><a href="https://github.com/linserv/sync-forks/actions/runs/19266359415" target="_blank">View Run →</a></td>
-                    </tr>
+            <div class="dashboard-row">
+                <div class="row-header">
+                    <div class="repo-info">
+                        <span class="repo-name"><a href="https://github.com/linserv/sync-forks" target="_blank">📁 linserv/sync-forks</a></span>
+                        <span class="branch-badge">🌿 main</span>
+                    </div>
+                    <span class="status-badge badge-success">SUCCESS</span>
+                </div>
+                <div class="meta-info">
+                    <div class="meta-item">
+                        <span>Workflow:</span>
+                        <strong>sync-3rd-party</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>Jobs:</span>
+                        <strong>2✅</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>Updated:</span>
+                        <strong>2025-11-11 12:58</strong>
+                    </div>
+                    <div class="meta-item">
+                        <a href="https://github.com/linserv/sync-forks/actions/runs/19266359415" target="_blank">View Run →</a>
+                    </div>
+                </div>
+                <div class="jobs-container"><div class="jobs-title">📊 Job Details</div><div class="job-list">
+                    <div class="job-item success">
+                        <span class="job-name"><strong>linserv/sale-workflow</strong></span>
+                        <span class="job-status success">✅ success</span>
+                    </div>
+                
+                    <div class="job-item success">
+                        <span class="job-name"><strong>linserv/CybroAddons</strong></span>
+                        <span class="job-status success">✅ success</span>
+                    </div>
+                </div></div>
+            </div>
 
-                </tbody>
-            </table>
         </div>
 
     </div>
