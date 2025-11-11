@@ -279,6 +279,99 @@ html = f"""<!DOCTYPE html>
             color: #c9d1d9;
             font-weight: 500;
         }}
+        .jobs-container {{
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #30363d;
+        }}
+        .jobs-title {{
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }}
+        .job-list {{
+            display: grid;
+            gap: 8px;
+        }}
+        .job-item {{
+            background: #0d1117;
+            border-radius: 4px;
+            padding: 10px 12px;
+            border-left: 3px solid;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+        }}
+        .job-item.success {{
+            border-left-color: #3fb950;
+            background: rgba(63, 185, 80, 0.1);
+        }}
+        .job-item.failure {{
+            border-left-color: #f85149;
+            background: rgba(248, 81, 73, 0.1);
+        }}
+        .job-item.in_progress {{
+            border-left-color: #d29922;
+            background: rgba(210, 153, 34, 0.1);
+        }}
+        .job-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }}
+        .job-name {{
+            flex: 1;
+            word-break: break-word;
+            font-weight: 500;
+        }}
+        .job-status {{
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            white-space: nowrap;
+        }}
+        .job-status.success {{
+            background: rgba(63, 185, 80, 0.2);
+            color: #3fb950;
+        }}
+        .job-status.failure {{
+            background: rgba(248, 81, 73, 0.2);
+            color: #f85149;
+        }}
+        .job-status.in_progress {{
+            background: rgba(210, 153, 34, 0.2);
+            color: #d29922;
+        }}
+        .branches-list {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }}
+        .branch-item {{
+            background: rgba(88, 166, 255, 0.15);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            color: #58a6ff;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }}
+        .branch-item.success {{
+            background: rgba(63, 185, 80, 0.15);
+            border-color: rgba(63, 185, 80, 0.3);
+            color: #3fb950;
+        }}
+        .branch-item.failure {{
+            background: rgba(248, 81, 73, 0.15);
+            border-color: rgba(248, 81, 73, 0.3);
+            color: #f85149;
+        }}
         .filter-badge {{
             display: inline-block;
             background: #1f6feb;
@@ -359,6 +452,35 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
         if in_progress_jobs > 0:
             job_summary += f" / {in_progress_jobs}⏳"
         
+        # Build jobs HTML with branches extracted from job names
+        jobs_html = ""
+        if len(jobs) > 0:
+            jobs_html = '<div class="jobs-container">'
+            jobs_html += '<div class="jobs-title">📊 Job Details</div>'
+            jobs_html += '<div class="job-list">'
+            
+            for job in jobs:
+                job_conclusion = job['conclusion'] or job['status']
+                job_class = job_conclusion.replace(' ', '_').replace('-', '_') if job_conclusion else 'unknown'
+                
+                job_display_name = job['name']
+                if 'Sync' in job['name']:
+                    parts = job['name'].replace('Sync', '').strip()
+                    job_display_name = f"<strong>{parts}</strong>"
+                
+                status_badge = f'<span class="job-status {job_class}">{"✅ success" if job_conclusion == "success" else "❌ failed" if job_conclusion == "failure" else "⏳ in progress"}</span>'
+                
+                jobs_html += f'''
+                    <div class="job-item {job_class}">
+                        <div class="job-header">
+                            <span class="job-name">{job_display_name}</span>
+                            {status_badge}
+                        </div>
+                    </div>
+                '''
+            
+            jobs_html += '</div></div>'
+        
         html += f"""
             <div class="dashboard-row">
                 <div class="row-header">
@@ -385,6 +507,7 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
                         <a href="{repo['run_url']}" target="_blank">View Run →</a>
                     </div>
                 </div>
+                {jobs_html}
             </div>
 """
     
