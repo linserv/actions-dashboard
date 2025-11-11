@@ -3,6 +3,8 @@ import os
 import re
 from github import Github, Auth
 from datetime import datetime
+import urllib.request
+import json
 
 # Initialize GitHub client with new auth method
 auth = Auth.Token(os.environ['GITHUB_TOKEN'])
@@ -30,47 +32,49 @@ repos = entity.get_repos()
 
 dashboard_data = []
 
-def extract_branch_details_from_logs(job):
+def extract_branch_details_from_logs(job, token):
     """Extract branch sync details from job logs"""
     branch_details = []
     try:
-        # Get job logs
+        # Get job logs using GitHub API
         logs_url = job.logs_url
         if logs_url:
-            import urllib.request
             req = urllib.request.Request(logs_url)
-            req.add_header('Authorization', f'token {os.environ["GITHUB_TOKEN"]}')
+            req.add_header('Authorization', f'token {token}')
             req.add_header('Accept', 'application/vnd.github.v3.raw')
             
             try:
-                with urllib.request.urlopen(req) as response:
+                with urllib.request.urlopen(req, timeout=10) as response:
                     logs = response.read().decode('utf-8')
                     
                     # Parse branch sync lines from logs
-                    # Look for patterns like "🔄 Syncing branch: 16.0" or "✅ Branch 16.0 synced!"
-                    branch_patterns = [
-                        r'🔄 Syncing branch: ([^\s\n]+)',
-                        r'✅ Branch ([^\s\n]+) synced',
-                        r'Syncing ([^\s\n]+)',
-                    ]
+                    # Looking for patterns like:
+                    # "🔄 Syncing linserv/odoo - 16.0"
+                    # "✅ Synced!"
+                    lines = logs.split('\n')
                     
-                    for pattern in branch_patterns:
-                        matches = re.findall(pattern, logs)
-                        branch_details.extend(matches)
-                    
-                    # Remove duplicates while preserving order
-                    seen = set()
-                    unique_branches = []
-                    for branch in branch_details:
-                        if branch not in seen:
-                            seen.add(branch)
-                            unique_branches.append(branch)
-                    
-                    branch_details = unique_branches
+                    current_branch = None
+                    for line in lines:
+                        # Look for the "Syncing" line which contains branch info
+                        sync_match = re.search(r'🔄 Syncing .* - ([^\s\n]+)', line)
+                        if sync_match:
+                            current_branch = sync_match.group(1)
+                            if current_branch not in branch_details:
+                                branch_details.append(current_branch)
+                        
+                        # Alternative pattern without emoji
+                        elif 'Syncing' in line and ' - ' in line:
+                            parts = line.split(' - ')
+                            if len(parts) >= 2:
+                                branch = parts[-1].strip()
+                                if branch and branch not in branch_details and len(branch) < 20:
+                                    branch_details.append(branch)
+            except urllib.error.HTTPError as e:
+                print(f"    Warning: Could not fetch logs (HTTP {e.code})")
             except Exception as e:
                 print(f"    Warning: Could not fetch logs: {e}")
     except Exception as e:
-        print(f"    Warning: Could not extract branch details: {e}")
+        print(f"    Warning: Error extracting branch details: {e}")
     
     return branch_details
 
@@ -127,7 +131,7 @@ for repo in repos:
                 job_name = job.name
                 
                 # Extract branch details from job logs
-                branch_details = extract_branch_details_from_logs(job)
+                branch_details = extract_branch_details_from_logs(job, os.environ['GITHUB_TOKEN'])
                 
                 job_details.append({
                     'name': job_name,
@@ -159,7 +163,7 @@ for repo in repos:
             failure_count = sum(1 for j in job_details if j['conclusion'] == 'failure')
             
             print(f"  ✓ {repo.full_name}: {run.conclusion or run.status} "
-                  f"(workflow: {run.name}, jobs: {success_count}✅/{failure_count}❌)")
+                  f"(workflow: {run.name}, jobs: {success_count}✅/{failure_count}❌, branches: {len([b for j in job_details for b in j['branches']])})")
         
     except Exception as e:
         print(f"  ✗ Error fetching {repo.full_name}: {e}")
@@ -366,6 +370,7 @@ html = f"""<!DOCTYPE html>
             justify-content: space-between;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
         }}
         .job-name {{
             flex: 1;
@@ -395,14 +400,13 @@ html = f"""<!DOCTYPE html>
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            margin-top: 4px;
         }}
         .branch-item {{
             background: rgba(88, 166, 255, 0.15);
             border: 1px solid rgba(88, 166, 255, 0.3);
             color: #58a6ff;
-            padding: 2px 6px;
-            border-radius: 3px;
+            padding: 3px 8px;
+            border-radius: 4px;
             font-size: 11px;
             font-weight: 500;
         }}
@@ -505,7 +509,7 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
         jobs_html = ""
         if len(jobs) > 0:
             jobs_html = '<div class="jobs-container">'
-            jobs_html += '<div class="jobs-title">📊 Job Details</div>'
+            jobs_html += '<div class="jobs-title">📊 Synced Repositories & Branches</div>'
             jobs_html += '<div class="job-list">'
             
             for job in jobs:
@@ -527,7 +531,7 @@ for workflow_type in sorted(workflow_groups.keys(), key=lambda x: workflow_type_
                         branches_html += f'<span class="branch-item {job_class}">🌿 {branch}</span>'
                     branches_html += '</div>'
                 else:
-                    branches_html = '<div class="no-branches">(no branch details available)</div>'
+                    branches_html = '<div class="no-branches">⚠️ (branch details not found in logs)</div>'
                 
                 jobs_html += f'''
                     <div class="job-item {job_class}">
